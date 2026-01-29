@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Flight Management Dashboard - Skymark</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #1a202c; color: #e2e8f0; }
+        .dashboard-card { background-color: #2d3748; border: 1px solid #4a5568; box-shadow: 0 4px 6px rgba(0,0,0,0.2); transition: all .25s; }
+        .input-field { background-color: #1a202c; border: 1px solid #4a5568; color: #e2e8f0; }
+        .btn-primary { transition: background-color .2s, transform .08s; }
+        .btn-primary:hover { transform: translateY(-1px); }
+        .error-message { background-color: #f56565; color: #fff; }
+        .success-message { background-color: #48bb78; color: #fff; }
+        .tab-button.active { border-bottom: 2px solid #3b82f6; color: #3b82f6; font-weight: 600; }
+        table { border-collapse: collapse; }
+        th, td { border: 1px solid #4a5568; padding: 8px; text-align: left; }
+        thead { background-color: #4a5568; }
+    </style>
+</head>
+<body class="min-h-screen p-4 sm:p-8">
+    <div id="app" class="max-w-7xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-extrabold text-blue-400">Skymark Airlines</h1>
+            <h2 class="text-xl text-gray-400">Flight Management System Dashboard</h2>
+        </header>
+
+        <div id="message-container" class="fixed top-5 right-5 z-50 transition-opacity duration-300 opacity-0">
+            <div id="message-box" class="p-3 rounded-lg shadow-lg font-semibold transform translate-x-10 transition-transform duration-300"></div>
+        </div>
+
+        <div id="login-view" class="max-w-md mx-auto dashboard-card p-6 rounded-xl">
+            <h3 class="text-2xl font-bold mb-6 text-center text-white">Operator Login</h3>
+            <form id="login-form">
+                <div class="mb-4">
+                    <label for="username" class="block text-sm font-medium text-gray-400 mb-1">Username</label>
+                    <input type="text" id="username" value="Admin" required class="input-field w-full p-2 rounded-lg" />
+                </div>
+                <div class="mb-6">
+                    <label for="password" class="block text-sm font-medium text-gray-400 mb-1">Password</label>
+                    <input type="password" id="password" value="admin123" required class="input-field w-full p-2 rounded-lg" />
+                    <p class="text-xs text-gray-500 mt-1">Hint: admin123</p>
+                </div>
+                <button type="submit" id="login-button" class="btn-primary w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg">
+                    Login
+                </button>
+            </form>
+        </div>
+
+        <div id="dashboard-view" class="hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+                <div class="dashboard-card p-6 rounded-xl lg:col-span-1">
+                    <h4 class="text-lg font-semibold text-gray-300 mb-2">Current Balance</h4>
+                    <p id="balance-display" class="text-4xl font-extrabold text-green-400">Loading...</p>
+                    <p class="text-sm text-gray-500 mt-1">Total operational funds</p>
+                </div>
+
+                <div class="dashboard-card p-6 rounded-xl lg:col-span-3">
+                    <h4 class="text-lg font-semibold text-gray-300 mb-4">Fleet Operations Overview</h4>
+                    <div id="fleet-status" class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                        <p class="text-gray-400 col-span-4">Loading fleet status...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <div class="xl:col-span-1 space-y-6">
+                    <div class="dashboard-card p-6 rounded-xl">
+                        <h4 class="text-xl font-bold text-blue-400 mb-4">Manage Destinations</h4>
+
+                        <h5 class="text-lg font-semibold text-gray-300 mb-2 mt-2">Add New Airport</h5>
+                        <form id="add-destination-form" class="space-y-3">
+                            <input type="text" id="add_icao_code" placeholder="ICAO Code (e.g., OBBI)" required class="input-field w-full p-2 rounded-lg">
+                            <input type="text" id="add_airport_name" placeholder="Airport Name (e.g., Bahrain Int.)" required class="input-field w-full p-2 rounded-lg">
+                            <input type="text" id="add_location" placeholder="City, Country" required class="input-field w-full p-2 rounded-lg">
+                            <button type="submit" class="btn-primary w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg">
+                                Add Destination
+                            </button>
+                        </form>
+
+                        <h5 class="text-lg font-semibold text-gray-300 mb-2 mt-6">Delete Existing Airport</h5>
+                        <form id="delete-destination-form" class="space-y-3">
+                            <input type="text" id="del_icao_code" placeholder="ICAO Code to Delete" required class="input-field w-full p-2 rounded-lg">
+                            <button type="submit" class="btn-primary w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg">
+                                Delete Destination
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="dashboard-card p-6 rounded-xl">
+                        <h4 class="text-xl font-bold text-blue-400 mb-4">Admin: Manage Bookings</h4>
+                        <p class="text-sm text-gray-400 mb-3">Bookings grouped by flight (DEP → ARV → DOF). Reschedule affects all passengers on that flight.</p>
+
+                        <div id="admin-bookings-list" class="max-h-80 overflow-y-auto text-sm space-y-3">
+                            <p class="text-gray-400">Loading bookings...</p>
+                        </div>
+
+                        <div id="reschedule-panel" class="hidden mt-4 border-t pt-4">
+                            <h5 class="text-md font-semibold text-gray-300 mb-2">Reschedule Flight (All passengers)</h5>
+                            <form id="reschedule-form" class="space-y-3">
+                                <input type="hidden" id="grp_dep">
+                                <input type="hidden" id="grp_arv">
+                                <input type="hidden" id="grp_old_dof">
+                                <label class="text-sm text-gray-400">New Date</label>
+                                <input type="date" id="reschedule_date" required class="input-field w-full p-2 rounded-lg">
+                                <label class="text-sm text-gray-400">New Time (optional)</label>
+                                <input type="time" id="reschedule_time" class="input-field w-full p-2 rounded-lg">
+                                <div class="flex gap-2">
+                                    <button type="submit" class="btn-primary bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg">Save</button>
+                                    <button type="button" id="reschedule-cancel" class="btn-primary bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="xl:col-span-2 space-y-6">
+                    <div class="dashboard-card p-6 rounded-xl">
+                        <h4 class="text-xl font-bold text-blue-400 mb-4">Conduct Flight & Calculate Earnings</h4>
+                        <form id="conduct-flight-form" class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-400 mb-1">Aircraft Reg No.</label>
+                                    <select id="flight_reg_no" required class="input-field w-full p-2 rounded-lg">
+                                        <option value="">-- Select Aircraft --</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-400 mb-1">Departure (VOCI)</label>
+                                    <input type="text" value="VOCI (Cochin Int. Airport)" disabled class="input-field w-full p-2 rounded-lg opacity-75">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-400 mb-1">Arrival (ICAO Code)</label>
+                                    <input type="text" id="arv_icao" placeholder="e.g., VIDP, VOBL" required class="input-field w-full p-2 rounded-lg">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-primary w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg">
+                                Simulate Round Trip Earnings
+                            </button>
+                        </form>
+                        <div id="flight-results" class="mt-4 p-3 bg-gray-700 rounded-lg hidden">
+                            <p class="font-bold text-lg text-green-400 mb-2">Operation Successful</p>
+                            <p id="earnings-output" class="text-sm"></p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card p-6 rounded-xl">
+                        <h4 class="text-xl font-bold text-blue-400 mb-4">Current Fleet List</h4>
+                        <div class="overflow-x-auto">
+                            <table id="fleet-table" class="min-w-full text-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Reg. No.</th>
+                                        <th>Aircraft</th>
+                                        <th>Capacity</th>
+                                        <th>Seats Available</th>
+                                        <th>Max Distance (mi)</th>
+                                        <th>Status</th>
+
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td colspan="5" class="text-center text-gray-400">Loading fleet data...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="text-center mt-8">
+                <button onclick="logout()" class="btn-primary bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">
+                    Logout
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://127.0.0.1:5000/api';
+        let isAuthenticated = false;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('authToken');
+            if (token) {
+                isAuthenticated = true;
+                showDashboard();
+                fetchDashboardData();
+            }
+        });
+
+        function showMessage(type, message) {
+            const container = document.getElementById('message-container');
+            const box = document.getElementById('message-box');
+            box.className = `p-3 rounded-lg shadow-lg font-semibold transform transition-transform duration-300 ${type === 'success' ? 'success-message' : 'error-message'}`;
+            box.textContent = message;
+            container.style.opacity = 1;
+            box.style.transform = 'translate(0)';
+            setTimeout(() => { box.style.transform = 'translate(100%)'; container.style.opacity = 0; }, 5000);
+        }
+
+        function showDashboard() {
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('dashboard-view').classList.remove('hidden');
+        }
+        function showLogin() {
+            document.getElementById('login-view').classList.remove('hidden');
+            document.getElementById('dashboard-view').classList.add('hidden');
+            localStorage.removeItem('authToken'); isAuthenticated = false;
+        }
+
+        async function fetchAPI(endpoint, method='GET', data=null) {
+            const headers = { 'Content-Type': 'application/json' };
+            const config = { method, headers, body: data ? JSON.stringify(data) : null };
+            try {
+                const res = await fetch(`${API_BASE_URL}${endpoint}`, config);
+                const json = await res.json();
+                if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+                return json;
+            } catch (err) {
+                console.error('API error:', err);
+                throw err;
+            }
+        }
+
+        async function fetchBalance() {
+            try {
+                const data = await fetchAPI('/balance');
+                const amount = data.Amount.toLocaleString('en-IN', { style:'currency', currency:'INR', maximumFractionDigits:0 });
+                document.getElementById('balance-display').textContent = amount;
+            } catch (e) {
+                document.getElementById('balance-display').textContent = 'Rs. Error';
+                showMessage('error','Failed to load balance.');
+            }
+        }
+
+        async function fetchFleet() {
+            try {
+                const fleet = await fetchAPI('/admin/fleet');
+                const tbody = document.querySelector('#fleet-table tbody');
+                const select = document.getElementById('flight_reg_no');
+                tbody.innerHTML = ''; select.innerHTML = '<option value="">-- Select Aircraft --</option>';
+                const statusDiv = document.getElementById('fleet-status'); statusDiv.innerHTML = '';
+                if (!Array.isArray(fleet) || fleet.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-yellow-400">No aircraft in fleet.</td></tr>`;
+                    statusDiv.innerHTML = `<div class="p-3 rounded-lg bg-gray-800/40"><p class="text-sm text-gray-400">No fleet data</p></div>`;
+                    return;
+                }
+                const statusCounts = { available:0, inflight:0, maintenance:0 };
+                fleet.forEach(a => {
+                    const row = tbody.insertRow();
+                    row.insertCell().textContent = a.Reg_No;
+                    row.insertCell().textContent = a.Aircraft;
+                    row.insertCell().textContent = a.Passenger_Capacity;
+                    row.insertCell().textContent = a.Passenger_Capacity; 
+                    row.insertCell().textContent = a.Max_Distance_miles;
+                    const statusText = a.Status || 'Available';
+                    row.insertCell().textContent = statusText;
+                    const option = document.createElement('option');
+                    option.value = a.Reg_No; option.textContent = `${a.Reg_No} - ${a.Aircraft}`;
+                    select.appendChild(option);
+                    const key = statusText.toLowerCase().replace(' ','');
+                    if (statusCounts[key] !== undefined) statusCounts[key]++; else statusCounts.available++;
+                });
+                statusDiv.innerHTML = `
+                    <div class="p-3 rounded-lg bg-green-900/50"><p class="text-4xl font-bold">${statusCounts.available}</p><p class="text-sm text-gray-400">Available</p></div>
+                    <div class="p-3 rounded-lg bg-blue-900/50"><p class="text-4xl font-bold">${statusCounts.inflight || 0}</p><p class="text-sm text-gray-400">In Flight (Sim)</p></div>
+                    <div class="p-3 rounded-lg bg-red-900/50"><p class="text-4xl font-bold">${statusCounts.maintenance || 0}</p><p class="text-sm text-gray-400">Maintenance (Sim)</p></div>
+                    <div class="p-3 rounded-lg bg-yellow-900/50"><p class="text-4xl font-bold">${fleet.length}</p><p class="text-sm text-gray-400">Total Aircraft</p></div>
+                `;
+            } catch (e) {
+                document.querySelector('#fleet-table tbody').innerHTML = `<tr><td colspan="5" class="text-center error-message">Error loading fleet data.</td></tr>`;
+                showMessage('error','Failed to load fleet data.');
+            }
+        }
+
+        function fetchDashboardData() {
+            fetchBalance(); fetchFleet(); fetchAdminBookings();
+        }
+
+        document.getElementById('login-form').addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            const button = document.getElementById('login-button');
+            const orig = button.textContent; button.disabled = true; button.textContent = 'Logging in...';
+            try {
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                const res = await fetchAPI('/admin/login', 'POST', { username, password });
+                if (res.message) {
+                    localStorage.setItem('authToken','logged_in');
+                    showMessage('success', res.message);
+                    showDashboard(); fetchDashboardData();
+                }
+            } catch (e) {
+                showMessage('error','Login Failed: Invalid credentials.');
+            } finally { button.disabled = false; button.textContent = orig; }
+        });
+
+        document.getElementById('add-destination-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const data = {
+                icao_code: form.add_icao_code.value.toUpperCase(),
+                airport_name: form.add_airport_name.value,
+                location: form.add_location.value
+            };
+            try {
+                const res = await fetchAPI('/admin/destination', 'POST', data);
+                showMessage('success', res.message);
+                form.reset();
+                fetchAirportsForAdmin && fetchAirportsForAdmin();
+            } catch (err) { showMessage('error', `Failed to add destination: ${err.message}`); }
+        });
+
+        document.getElementById('delete-destination-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const icao = e.target.del_icao_code.value.toUpperCase();
+            try {
+                const res = await fetchAPI('/admin/destination', 'DELETE', { icao_code: icao });
+                showMessage('success', res.message);
+                e.target.reset();
+            } catch (err) { showMessage('error', `Failed to delete destination: ${err.message}`); }
+        });
+
+        document.getElementById('conduct-flight-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const resultsDiv = document.getElementById('flight-results');
+            resultsDiv.classList.add('hidden');
+            const data = { reg_no: document.getElementById('flight_reg_no').value, arv_icao: document.getElementById('arv_icao').value.toUpperCase() };
+            try {
+                const result = await fetchAPI('/admin/conduct_flight', 'POST', data);
+                const formattedEarnings = result.earnings.toLocaleString('en-IN', { style:'currency', currency:'INR', maximumFractionDigits:0 });
+                document.getElementById('earnings-output').innerHTML = `
+                    <p class="text-white">Trip: ${result.departure} to ${result.arrival}</p>
+                    <p class="text-white">Passengers (To/From): ${result.passengers_to} / ${result.passengers_from}</p>
+                    <p class="text-lg font-bold text-green-400 mt-2">Total Earnings: ${formattedEarnings}</p>
+                `;
+                showMessage('success', `Flight successful! Balance updated by ${formattedEarnings}.`);
+                resultsDiv.classList.remove('hidden'); resultsDiv.classList.remove('error-message'); resultsDiv.classList.add('success-message');
+                fetchBalance(); fetchAdminBookings();
+            } catch (err) {
+                document.getElementById('earnings-output').textContent = `Error: ${err.message}`;
+                resultsDiv.classList.remove('hidden'); resultsDiv.classList.remove('success-message'); resultsDiv.classList.add('error-message');
+                showMessage('error', `Flight Failed: ${err.message}`);
+            }
+        });
+
+        async function fetchAdminBookings() {
+            const container = document.getElementById('admin-bookings-list');
+            container.innerHTML = `<p class="text-gray-400">Fetching bookings...</p>`;
+            try {
+                const bookings = await fetchAPI('/bookings');
+                if (!Array.isArray(bookings) || bookings.length === 0) {
+                    container.innerHTML = `<p class="text-yellow-400 font-semibold">No bookings found.</p>`;
+                    return;
+                }
+                bookings.sort((a,b) => {
+                    if (a.DEP !== b.DEP) return a.DEP.localeCompare(b.DEP);
+                    if (a.ARV !== b.ARV) return a.ARV.localeCompare(b.ARV);
+                    return new Date(a.DOF) - new Date(b.DOF);
+                });
+                const groups = {};
+                bookings.forEach(b => {
+                    const key = `${b.DEP}__${b.ARV}__${b.DOF}`;
+                    if (!groups[key]) groups[key] = { dep: b.DEP, arv: b.ARV, dof: b.DOF, list: [] };
+                    groups[key].list.push(b);
+                });
+                container.innerHTML = Object.keys(groups).map(k => {
+                    const g = groups[k];
+                    const header = `<div class="p-2 rounded-t-lg bg-gray-800/40 flex justify-between items-center">
+                        <div>
+                            <p class="font-bold">${g.dep} → ${g.arv}</p>
+                            <p class="text-xs text-gray-300">Date: ${new Date(g.dof).toLocaleString('en-IN')}</p>
+                            <p class="text-xs text-gray-300">Passengers: ${g.list.length}</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="openGroupReschedule('${g.dep}','${g.arv}','${g.dof}')" class="btn-primary bg-yellow-600 hover:bg-yellow-700 text-white py-1 px-2 rounded text-sm">Reschedule Flight</button>
+                        </div>
+                    </div>`;
+                    const rows = g.list.map(bkg => {
+                        return `<div id="admin-booking-${bkg.TkID}" class="p-3 border-l-4 border-blue-500">
+                            <p class="text-sm font-semibold">${bkg.Name} — Ticket: <span class="text-white">${bkg.TkID}</span></p>
+                            <p class="text-xs text-gray-300">Cost: Rs ${Number(bkg.Cost).toLocaleString()}</p>
+                            <div class="mt-2"><button onclick="adminCancelBooking('${bkg.TkID}', ${bkg.Cost})" class="btn-primary bg-red-600 hover:bg-red-700 text-white py-1 px-2 rounded text-sm">Cancel</button></div>
+                        </div>`;
+                    }).join('');
+                    return `<div class="mb-3 rounded-lg bg-gray-900/40 overflow-hidden">${header}<div class="p-2 space-y-2">${rows}</div></div>`;
+                }).join('');
+            } catch (err) {
+                container.innerHTML = `<p class="error-message p-2 rounded-lg">Failed to load bookings. (${err.message})</p>`;
+                showMessage('error','Failed to load bookings.');
+            }
+        }
+
+        function openGroupReschedule(dep, arv, old_dof) {
+            document.getElementById('reschedule-panel').classList.remove('hidden');
+            document.getElementById('grp_dep').value = dep;
+            document.getElementById('grp_arv').value = arv;
+            document.getElementById('grp_old_dof').value = old_dof;
+        }
+        document.getElementById('reschedule-cancel').addEventListener('click', () => {
+            document.getElementById('reschedule-panel').classList.add('hidden'); document.getElementById('reschedule-form').reset();
+        });
+
+        document.getElementById('reschedule-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const dep = document.getElementById('grp_dep').value;
+            const arv = document.getElementById('grp_arv').value;
+            const old_dof = document.getElementById('grp_old_dof').value;
+            const date = document.getElementById('reschedule_date').value;
+            const time = document.getElementById('reschedule_time').value;
+            if (!date) return showMessage('error','Please pick a valid new date.');
+            let new_dof = date;
+            if (time) new_dof = `${date} ${time}:00`;
+            try {
+                const res = await fetchAPI('/admin/reschedule_flight', 'POST', { dep, arv, old_dof, new_dof });
+                showMessage('success', res.message);
+                document.getElementById('reschedule-panel').classList.add('hidden'); document.getElementById('reschedule-form').reset();
+                fetchAdminBookings();
+            } catch (err) {
+                showMessage('error', `Reschedule failed: ${err.message}`);
+            }
+        });
+
+        async function adminCancelBooking(tkId, cost) {
+            const percent = prompt(`Enter refund percent to apply for Ticket ${tkId} (0-100). Leave blank to auto-calculate:`, "");
+            if (percent === null) return;
+            let p = null;
+            if (percent.trim() !== "") p = Math.max(0, Math.min(100, Number(percent) || 0));
+            if (!confirm(`Cancel ticket ${tkId}?`)) return;
+            try {
+                const payload = { tk_id: tkId, cost: cost };
+                if (p !== null) payload.refund_percent = p;
+                const res = await fetchAPI('/cancel_booking', 'POST', payload);
+                showMessage('success', res.message);
+                fetchAdminBookings(); fetchBalance();
+            } catch (err) {
+                showMessage('error', `Cancellation failed: ${err.message}`);
+            }
+        }
+
+        function logout() { showLogin(); showMessage('success','Logged out successfully.'); }
+    </script>
+</body>
+</html>

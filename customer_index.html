@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>Skymark Airlines - Online Booking Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #1a202c; color: #e2e8f0; }
+        .card { background-color: #2d3748; border: 1px solid #4a5568; box-shadow: 0 4px 6px rgba(0,0,0,.2); }
+        .input-field { background-color: #1a202c; border: 1px solid #4a5568; color: #e2e8f0; }
+        .btn-primary { transition: background-color .2s, transform .06s; }
+        .btn-primary:hover { transform: translateY(-1px); }
+        .error-message { background-color: #f56565; color: #fff; }
+        .success-message { background-color: #48bb78; color: #fff; }
+        .tab-button.active { border-bottom: 2px solid #3b82f6; color: #3b82f6; font-weight: 600; }
+    </style>
+</head>
+<body class="min-h-screen flex items-start justify-center p-4">
+    <div id="app" class="max-w-3xl w-full mt-10">
+        <header class="text-center mb-6">
+            <h1 class="text-4xl font-extrabold text-blue-400">Skymark Airlines</h1>
+            <h2 class="text-xl text-gray-400">Online Booking Portal</h2>
+        </header>
+
+        <div id="message-container" class="fixed top-5 right-5 z-50 transition-opacity duration-300 opacity-0">
+            <div id="message-box" class="p-3 rounded-lg shadow-lg font-semibold transform translate-x-10 transition-transform duration-300"></div>
+        </div>
+
+        <div class="card p-6 rounded-xl space-y-6">
+            <div class="flex border-b border-gray-600 mb-6">
+                <button id="tab-booking" class="tab-button active flex-1 py-3 text-center text-gray-400 hover:text-blue-400" onclick="showTab('booking')">1. New Booking</button>
+                <button id="tab-reservations" class="tab-button flex-1 py-3 text-center text-gray-400 hover:text-blue-400" onclick="showTab('reservations')">2. My Reservations</button>
+            </div>
+
+            <div id="booking-tab">
+                <h3 class="text-2xl font-bold mb-4">1. Select Destination</h3>
+
+                <div id="airport-list-container" class="mb-4 max-h-48 overflow-y-auto card p-3 rounded-lg text-sm text-gray-300">
+                    Loading available airports...
+                </div>
+
+                <form id="destination-form" class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="dep_icao" class="block text-sm font-medium text-gray-400 mb-1">Departure (ICAO Code)</label>
+                        <input type="text" id="dep_icao" value="VOCI" required class="input-field w-full p-2 rounded-lg uppercase" placeholder="e.g., VOCI" onchange="resetBookingStep(1)">
+                        <p class="text-xs text-gray-500 mt-1">Default: VOCI (Cochin Int. Airport)</p>
+                    </div>
+                    <div>
+                        <label for="arv_icao" class="block text-sm font-medium text-gray-400 mb-1">Arrival (ICAO Code)</label>
+                        <input type="text" id="arv_icao" value="VIDP" required class="input-field w-full p-2 rounded-lg uppercase" placeholder="e.g., VIDP" onchange="resetBookingStep(1)">
+                    </div>
+                    <div class="col-span-2">
+                        <button type="submit" id="check-flight-button" class="btn-primary w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg">
+                            Check Flight & Prices
+                        </button>
+                    </div>
+                </form>
+
+                <div id="booking-step-2" class="hidden mt-8">
+                    <h3 class="text-2xl font-bold mb-4">2. Flight Details & Passenger</h3>
+                    <div id="flight-summary" class="card p-4 rounded-lg bg-gray-700/50 mb-4 text-sm"></div>
+
+                    <form id="booking-form" class="space-y-4">
+                        <input type="text" id="passenger_name" placeholder="Passenger Full Name" required class="input-field w-full p-3 rounded-lg">
+                        <input type="date" id="date_of_flight" required class="input-field w-full p-3 rounded-lg">
+                        
+                        <div>
+                            <label for="time_of_flight" class="block text-sm font-medium text-gray-400 mb-1">Time of Flight (IST)</label>
+                            <select id="time_of_flight" required class="input-field w-full p-3 rounded-lg">
+                                <option value="" disabled selected>Select Time</option>
+                                <option value="06:30:00">06:30 AM (Early Bird)</option>
+                                <option value="10:00:00">10:00 AM (Morning)</option>
+                                <option value="14:45:00">02:45 PM (Afternoon)</option>
+                                <option value="19:20:00">07:20 PM (Evening)</option>
+                                <option value="22:00:00">10:00 PM (Late Night)</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400 mb-1">Seating Class</label>
+                                <select id="seat_class" required class="input-field w-full p-3 rounded-lg" onchange="updateTotalCost()">
+                                    <option value="1">Economy (Base Cost)</option>
+                                    <option value="2">Business (2x Cost)</option>
+                                    <option value="3">First Class (3x Cost)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400 mb-1">Meal Purchase?</label>
+                                <select id="meal_option" required class="input-field w-full p-3 rounded-lg" onchange="updateTotalCost()">
+                                    <option value="0">No Meal</option>
+                                    <option value="50">Basic Meal (+Rs 50)</option>
+                                    <option value="120">Premium Meal (+Rs 120)</option>
+                                </select>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm font-medium text-gray-400 mb-1">Total Payable</p>
+                                <p id="total-cost-display" class="text-3xl font-extrabold text-green-400">Rs 0</p>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg">
+                            Proceed to Payment
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div id="reservations-tab" class="hidden">
+                <h3 class="text-2xl font-bold mb-4">My Reservations</h3>
+                <div id="reservations-list" class="space-y-4">
+                    <p class="text-gray-400">Loading your past bookings...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="payment-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60">
+        <div class="w-full max-w-md p-6 rounded-lg card">
+            <h3 class="text-xl font-bold mb-3">Secure Payment</h3>
+            <p class="text-sm text-gray-300 mb-4">This is a simulated payment gateway for demo purposes. Enter any card details and click Pay.</p>
+            <form id="payment-form" class="space-y-3">
+                <input type="text" id="card_name" placeholder="Cardholder Name" required class="input-field w-full p-2 rounded-lg">
+                <input type="text" id="card_number" placeholder="Card Number (12+ digits)" required class="input-field w-full p-2 rounded-lg">
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="card_exp" placeholder="MM/YY" required class="input-field w-full p-2 rounded-lg">
+                    <input type="text" id="card_cvv" placeholder="CVV" required class="input-field w-full p-2 rounded-lg">
+                </div>
+                <div class="flex justify-between items-center">
+                    <button type="submit" class="btn-primary bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Pay</button>
+                    <button type="button" id="payment-cancel" class="btn-primary bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://127.0.0.1:5000/api';
+        let airportsData = [];
+        let currentFlightData = {};
+
+        function showMessage(type, message) {
+            const container = document.getElementById('message-container');
+            const box = document.getElementById('message-box');
+            box.className = `p-3 rounded-lg shadow-lg font-semibold transform transition-transform duration-300 ${type === 'success' ? 'success-message' : 'error-message'}`;
+            box.textContent = message;
+            container.style.opacity = 1;
+            box.style.transform = 'translate(0)';
+            setTimeout(() => { box.style.transform = 'translate(100%)'; container.style.opacity = 0; }, 5000);
+        }
+
+        function showTab(tabId) {
+            document.getElementById('booking-tab').classList.add('hidden');
+            document.getElementById('reservations-tab').classList.add('hidden');
+            document.getElementById('tab-booking').classList.remove('active');
+            document.getElementById('tab-reservations').classList.remove('active');
+            document.getElementById(`${tabId}-tab`).classList.remove('hidden');
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            if (tabId === 'reservations') fetchReservations();
+        }
+
+        function resetBookingStep(step = 1) {
+            document.getElementById('booking-step-2').classList.add('hidden');
+            if (step === 1) {
+                currentFlightData = {};
+                document.getElementById('flight-summary').innerHTML = '';
+                document.getElementById('total-cost-display').textContent = 'Rs 0';
+                document.getElementById('seat_class').value = 1;
+                document.getElementById('meal_option').value = 0;
+            }
+        }
+
+        function formatCurrency(amount) {
+            return `Rs ${amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+        }
+
+        async function fetchAPI(endpoint, method='GET', data=null) {
+            const headers = { 'Content-Type': 'application/json' };
+            const config = { method, headers, body: data ? JSON.stringify(data) : null };
+            try {
+                const res = await fetch(`${API_BASE_URL}${endpoint}`, config);
+                const json = await res.json();
+                if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+                return json;
+            } catch (err) {
+                console.error('API error:', err);
+                throw err;
+            }
+        }
+
+        async function fetchAirports() {
+            try {
+                const data = await fetchAPI('/airports/customer');
+                airportsData = data;
+                const listContainer = document.getElementById('airport-list-container');
+                let html = '<p class="font-bold mb-1 text-blue-300">Available Destinations:</p><ul class="list-disc ml-4 space-y-1">';
+                const voci = airportsData.find(a => a.ICAO_Code === 'VOCI');
+                const vname = voci ? voci.Airport_Name : 'Cochin International Airport';
+                html += `<li class="text-sm font-bold text-green-400">${vname} (VOCI) - DEPARTURE BASE</li>`;
+                airportsData.forEach(a => { if (a.ICAO_Code !== 'VOCI') html += `<li><span class="font-semibold">${a.ICAO_Code}</span> - ${a.Airport_Name}, ${a.Location}</li>`; });
+                html += '</ul>';
+                listContainer.innerHTML = html; listContainer.classList.add('border','border-gray-500');
+            } catch (err) {
+                document.getElementById('airport-list-container').innerHTML = `<p class="error-message p-2 rounded-lg">Error loading destinations. (${err.message})</p>`;
+                showMessage('error','Failed to load airport list.');
+            }
+        }
+
+        async function fetchReservations() {
+            const listContainer = document.getElementById('reservations-list');
+            listContainer.innerHTML = '<p class="text-gray-400">Fetching your past bookings...</p>';
+            try {
+                const data = await fetchAPI('/bookings');
+                if (!Array.isArray(data) || data.length === 0) {
+                    listContainer.innerHTML = '<p class="text-yellow-400 font-semibold">No bookings found in the system yet.</p>';
+                    return;
+                }
+                listContainer.innerHTML = data.map(b => {
+                    const cost = formatCurrency(b.Cost);
+                    const depAirport = airportsData.find(a => a.ICAO_Code === b.DEP)?.Airport_Name || b.DEP;
+                    const arvAirport = airportsData.find(a => a.ICAO_Code === b.ARV)?.Airport_Name || b.ARV;
+                    const flightDate = new Date(b.DOF).toLocaleString('en-IN');
+                    return `
+                        <div id="booking-${b.TkID}" class="card p-4 rounded-lg border-l-4 border-blue-500 flex justify-between items-center">
+                            <div>
+                                <p class="font-bold text-lg">${depAirport} &rarr; ${arvAirport}</p>
+                                <p class="text-sm text-gray-400">Ticket ID: <span class="text-white">${b.TkID}</span> | Name: ${b.Name}</p>
+                                <p class="text-sm text-gray-400">Date: ${flightDate} | Cost: <span class="text-green-400">${cost}</span></p>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <button onclick="cancelBooking('${b.TkID}', ${b.Cost})" class="btn-primary bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-lg text-sm">Cancel Ticket</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                listContainer.innerHTML = `<p class="error-message p-2 rounded-lg">Failed to load reservations. (${err.message})</p>`;
+                showMessage('error','Failed to load reservations.');
+            }
+        }
+
+        async function cancelBooking(tkId, cost) {
+            if (!confirm(`Are you sure you want to cancel Ticket ID ${tkId}?`)) return;
+            try {
+                const payload = { tk_id: tkId, cost: cost };
+                const result = await fetchAPI('/cancel_booking', 'POST', payload);
+                showMessage('success', result.message);
+                document.getElementById(`booking-${tkId}`)?.remove();
+                fetchReservations();
+            } catch (err) {
+                showMessage('error', `Cancellation failed: ${err.message}`);
+            }
+        }
+
+        document.getElementById('destination-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            resetBookingStep(1);
+            const button = document.getElementById('check-flight-button');
+            button.disabled = true; button.textContent = 'Checking...';
+            const dep_icao = document.getElementById('dep_icao').value.toUpperCase();
+            const arv_icao = document.getElementById('arv_icao').value.toUpperCase();
+            if (dep_icao === arv_icao) { showMessage('error','Departure and Arrival cannot be the same!'); button.disabled=false; button.textContent='Check Flight & Prices'; return; }
+            try {
+                const data = await fetchAPI('/check_flight', 'POST', { dep_icao, arv_icao });
+                currentFlightData = data; updateTotalCost();
+                const depName = airportsData.find(a=>a.ICAO_Code===dep_icao)?.Airport_Name||dep_icao;
+                const arvName = airportsData.find(a=>a.ICAO_Code===arv_icao)?.Airport_Name||arv_icao;
+                document.getElementById('flight-summary').innerHTML = `
+                    <p class="font-bold text-white">${depName} (${dep_icao}) &rarr; ${arvName} (${arv_icao})</p>
+                    <p class="text-sm">Distance: ${data.distance_miles.toLocaleString()} miles</p>
+                    <p class="text-sm text-green-400 font-semibold">Base Fare (Economy, one-way): ${formatCurrency(data.base_cost)}</p>
+                `;
+                document.getElementById('booking-step-2').classList.remove('hidden');
+                showMessage('success','Flight available! Proceed to payment.');
+            } catch (err) {
+                showMessage('error', `Flight check failed: ${err.message}`);
+            } finally { button.disabled=false; button.textContent='Check Flight & Prices'; }
+        });
+
+        function updateTotalCost() {
+            const seatMultiplier = parseInt(document.getElementById('seat_class').value);
+            const mealCost = parseInt(document.getElementById('meal_option').value);
+            const baseCost = currentFlightData.base_cost || 0;
+            const totalCost = (baseCost * seatMultiplier) + mealCost;
+            currentFlightData.total_cost = totalCost;
+            document.getElementById('total-cost-display').textContent = formatCurrency(totalCost);
+        }
+
+        document.getElementById('booking-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const passenger = document.getElementById('passenger_name').value.trim();
+            const dateInput = document.getElementById('date_of_flight').value;
+            const timeInput = document.getElementById('time_of_flight').value; // Get value from new dropdown
+
+            if (!currentFlightData.base_cost) { showMessage('error','Please check flight details first.'); return; }
+            if (!dateInput) { showMessage('error','Please select a travel date.'); return; }
+            if (!timeInput) { showMessage('error','Please select a flight time.'); return; } // New check for time selection
+
+            const selectedDate = new Date(dateInput + 'T00:00:00');
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            if (selectedDate < today) { showMessage('error','Cannot book a flight in the past. Choose a future date.'); return; }
+            openPaymentModal();
+        });
+
+        function openPaymentModal() { document.getElementById('payment-modal').classList.remove('hidden'); }
+        function closePaymentModal() { document.getElementById('payment-modal').classList.add('hidden'); document.getElementById('payment-form').reset(); }
+
+        document.getElementById('payment-cancel').addEventListener('click', () => { closePaymentModal(); });
+
+        document.getElementById('payment-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payBtn = e.submitter;
+            payBtn.disabled = true; payBtn.textContent = 'Processing...';
+            const cardNum = document.getElementById('card_number').value.replace(/\s+/g,'');
+            if (cardNum.length < 12) { showMessage('error','Enter a valid card number (simulation).'); payBtn.disabled=false; payBtn.textContent='Pay'; return; }
+            try {
+                const passenger = document.getElementById('passenger_name').value;
+                const dateInput = document.getElementById('date_of_flight').value;
+                const timeInput = document.getElementById('time_of_flight').value; // Get value from new dropdown
+                
+                // Combine date and time, the dropdown values are already in HH:MM:SS format
+                const combinedDateTime = `${dateInput} ${timeInput}`; 
+
+                const selectedDate = new Date(dateInput + 'T00:00:00');
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                if (selectedDate < today) { showMessage('error','Cannot book a flight in the past. Choose a future date.'); closePaymentModal(); payBtn.disabled=false; payBtn.textContent='Pay'; return; }
+                
+                const finalBookingData = {
+                    name: passenger,
+                    dep_icao: currentFlightData.departure,
+                    arv_icao: currentFlightData.arrival,
+                    date_of_flight: combinedDateTime,
+                    total_cost: currentFlightData.total_cost
+                };
+                
+                const result = await fetchAPI('/book_ticket', 'POST', finalBookingData);
+                showMessage('success', `${result.message} Ticket ID: ${result.tk_id}`);
+                document.getElementById('booking-form').reset();
+                resetBookingStep(1);
+                closePaymentModal();
+            } catch (err) {
+                showMessage('error', `Booking failed: ${err.message}`);
+            } finally {
+                payBtn.disabled = false; payBtn.textContent = 'Pay';
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', fetchAirports);
+        document.getElementById('seat_class').addEventListener('change', updateTotalCost);
+        document.getElementById('meal_option').addEventListener('change', updateTotalCost);
+    </script>
+</body>
+</html>
